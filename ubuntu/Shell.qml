@@ -16,11 +16,6 @@
 
 import QtQuick 2.0
 import Ubuntu.Components 0.1
-
-// IconRunner Begin
-import HudClient 0.1
-//IconRunner End
-
 import "Dash"
 import "Applications"
 import "Applications/applications.js" as ApplicationsModel
@@ -35,10 +30,6 @@ import "SideStage"
 
 FocusScope {
     id: shell
-
-    // IconRunner Begin
-    signal actionTriggered(int action)
-    // IconRunner End
 
     // this is only here to select the width / height of the window if not running fullscreen
     property bool tablet: false
@@ -139,15 +130,17 @@ This emulation will not be perfect, you *must* not trust it. To be safe always t
         }
     }
 
+    function activateDash() {
+        dash.show()
+    }
+
+
     VolumeControl {
         id: _volumeControl
     }
 
-
     Keys.onVolumeUpPressed: _volumeControl.volumeUp()
     Keys.onVolumeDownPressed: _volumeControl.volumeDown()
-
-    // IconRunner Begin
 //    Keys.onBackPressed: hud.show()
     // Back = (Home 0x01000061)
     // Menu = (Menu 0x01000055)
@@ -158,7 +151,6 @@ This emulation will not be perfect, you *must* not trust it. To be safe always t
             greeter.show()
         }
 
-        // i777 Menu Key (both i9100 and i777)
         if (event.key == Qt.Key_Menu) {
             if (hud.shown == true) {
                 hud.hide()
@@ -168,29 +160,25 @@ This emulation will not be perfect, you *must* not trust it. To be safe always t
             }
         }
 
-        // i777 Home Key
         if (event.key == Qt.Key_Back) {
-            // Here's where I left off. I'm trying to mimic the close button in ToolBar.qml
-            //actionTriggered(HudClient.QuitToolBarAction)
-
-            // For now we'll let the home button lock the screen.
+            //parametrizedActionsPage.buttons.backButton.backPressed()
             greeter.show()
         }
 
-        // I'm using these to probe for the other two keys on the i777. So far no luck :(
         if (event.key == Qt.Key_Search) {
             greeter.show()
         }
 
         if (event.key == Qt.Key_Home) {
-            hud.show()
+            greeter.show()
         }
 
         if (event.key == Qt.Key_Period) {
             greeter.show()
         }
 
-        // IconRunner End
+
+    }
 
     // for Desktop only, to emulate window management when hybris not available
     Item {

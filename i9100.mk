@@ -59,4 +59,5 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/ubuntu/GT-I9100.conf:system/GT-I9100.conf \
     $(LOCAL_PATH)/ubuntu/99ubuntu-session:system/etc/init.d/99ubuntu-session \
     $(LOCAL_PATH)/ubuntu/Shell.qml:system/Shell.qml
+
 $(call inherit-product-if-exists, vendor/samsung/i9100/i9100-vendor.mk)
