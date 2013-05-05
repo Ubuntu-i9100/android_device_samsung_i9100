@@ -15,15 +15,9 @@
  */
 
 import QtQuick 2.0
+import Ubuntu.Application 0.1
 import Ubuntu.Components 0.1
-
-// IconRunner Begin
-import HudClient 0.1
-// IconRunner End
-
 import "Dash"
-import "Applications"
-import "Applications/applications.js" as ApplicationsModel
 import "Greeter"
 import "Launcher"
 import "Panel"
@@ -35,10 +29,6 @@ import "SideStage"
 
 FocusScope {
     id: shell
-
-    // IconRunner Begin
-    signal actionTriggered(int action)
-    // IconRunner End
 
     // this is only here to select the width / height of the window if not running fullscreen
     property bool tablet: false
@@ -64,38 +54,9 @@ FocusScope {
 
     property ListModel searchHistory: SearchHistoryModel {}
 
-    // if running in Hybris environment, can offload running app management to it, else we fake it
-    property var applicationManager
-    // whether or not "import Ubuntu.Application" would work
-    property bool importUbuntuApplicationAvailable: checkImportUbuntuApplicationAvailable()
-
-    /* Checks if the "Ubuntu.Application" plugin is available, and if so use it for application management.
-       Returns true if the plugin is available, false otherwise.
-
-       This works around the lack of conditional imports in QML.
-       Ref.: https://bugreports.qt-project.org/browse/QTBUG-16854
-    */
-    function checkImportUbuntuApplicationAvailable() {
-        try {
-            var object = Qt.createQmlObject('import Ubuntu.Application 0.1; import QtQuick 2.0; QtObject {}', shell, "");
-            object.destroy();
-            return true;
-        } catch (error) {
-            console.log("NOTICE: The Ubuntu.Application plugin was not found, so all window management is emulated in this application.\n\
-This emulation will not be perfect, you *must* not trust it. To be safe always test on a device with Ubuntu.Application available.");
-            return false;
-        }
-    }
+    property var applicationManager: ApplicationManagerWrapper {}
 
     Component.onCompleted: {
-        var component;
-        if (!importUbuntuApplicationAvailable) {
-            component = Qt.createComponent("Components/ApplicationManagerFake.qml");
-        } else {
-            component = Qt.createComponent("Components/ApplicationManagerWrapper.qml");
-        }
-
-        applicationManager = component.createObject(shell);
         applicationManager.sideStageEnabled = Qt.binding(function() { return sideStage.enabled })
 
         // FIXME: if application focused before shell starts, shell draws on top of it only.
@@ -130,7 +91,7 @@ This emulation will not be perfect, you *must* not trust it. To be safe always t
             if (application == null) {
                 return;
             }
-            if (application.stage == ApplicationsModel.MainStage || !sideStage.enabled) {
+            if (application.stage == ApplicationInfo.MainStage || !sideStage.enabled) {
                 mainStage.activateApplication(desktopFile);
             } else {
                 sideStage.activateApplication(desktopFile);
@@ -140,23 +101,18 @@ This emulation will not be perfect, you *must* not trust it. To be safe always t
     }
 
     VolumeControl {
-        id: _volumeControl
+        id: volumeControl
     }
 
-    Keys.onVolumeUpPressed: _volumeControl.volumeUp()
-    Keys.onVolumeDownPressed: _volumeControl.volumeDown()
-
-    // IconRunner Begin
-//    Keys.onBackPressed: hud.show()
-    // Back = (Home 0x01000061)
-    // Menu = (Menu 0x01000055)
+    Keys.onVolumeUpPressed: volumeControl.volumeUp()
+    Keys.onVolumeDownPressed: volumeControl.volumeDown()
 
     Keys.onReleased: {
         if (event.key == Qt.Key_PowerOff) {
             greeter.show()
         }
 
-        // i777 Menu Key (both i9100 and i777)
+	// i777 Menu Key (both i9100 and i777)
         if (event.key == Qt.Key_Menu) {
             if (hud.shown == true) {
                 hud.hide()
@@ -187,17 +143,6 @@ This emulation will not be perfect, you *must* not trust it. To be safe always t
         if (event.key == Qt.Key_Period) {
             greeter.show()
         }
-    }
-    // IconRunner End
-
-    // for Desktop only, to emulate window management when hybris not available
-    Item {
-        id: fakeWindowContainer
-
-        property real sideStageWidth: sideStage.width
-
-        anchors.fill: parent
-        z: -1000
     }
 
     Item {
@@ -436,7 +381,7 @@ This emulation will not be perfect, you *must* not trust it. To be safe always t
         height: parent.height - panel.panelHeight
 
         onShownChanged: if (shown) greeter.forceActiveFocus()
-        
+
         onUnlocked: greeter.hide()
         onSelected: shell.background = greeter.model.get(uid).background;
 
@@ -518,7 +463,6 @@ This emulation will not be perfect, you *must* not trust it. To be safe always t
 
         Bottombar {
             theHud: hud
-            sideStageWidth: sideStage.width
             anchors.fill: parent
             enabled: !panel.indicators.shown
         }
@@ -608,3 +552,4 @@ This emulation will not be perfect, you *must* not trust it. To be safe always t
         enabled: shell.applicationManager && shell.applicationManager.keyboardVisible
     }
 }
+
