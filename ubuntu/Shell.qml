@@ -17,6 +17,7 @@
 import QtQuick 2.0
 import Ubuntu.Application 0.1
 import Ubuntu.Components 0.1
+import LightDM 0.1 as LightDM
 import "Dash"
 import "Greeter"
 import "Launcher"
@@ -36,7 +37,8 @@ FocusScope {
     height: tablet ? units.gu(100) : units.gu(71)
 
     property real edgeSize: units.gu(2)
-    property url background: shell.width >= units.gu(60) ? "graphics/tablet_background.jpg" : "graphics/phone_background.jpg"
+    property url default_background: shell.width >= units.gu(60) ? "graphics/tablet_background.jpg" : "graphics/phone_background.jpg"
+    property url background: default_background
     readonly property real panelHeight: panel.panelHeight
 
     property bool dashShown: dash.shown
@@ -80,21 +82,28 @@ FocusScope {
         target: applicationManager
         ignoreUnknownSignals: true
         onFocusRequested: {
+            // TODO: this should be protected to only unlock for certain applications / certain usecases
+            // potentially only in connection with a notification
+            greeter.hide();
             shell.activateApplication(desktopFile);
         }
     }
 
     function activateApplication(desktopFile, argument) {
         if (applicationManager) {
+            // For newly started applications, as it takes them time to draw their first frame
+            // we add a delay before we hide the animation screenshots to compensate.
+            var addDelay = !applicationManager.getApplicationFromDesktopFile(desktopFile);
+
             var application;
             application = applicationManager.activateApplication(desktopFile, argument);
             if (application == null) {
                 return;
             }
             if (application.stage == ApplicationInfo.MainStage || !sideStage.enabled) {
-                mainStage.activateApplication(desktopFile);
+                mainStage.activateApplication(desktopFile, addDelay);
             } else {
-                sideStage.activateApplication(desktopFile);
+                sideStage.activateApplication(desktopFile, addDelay);
             }
             stages.show();
         }
@@ -242,18 +251,26 @@ FocusScope {
             Connections {
                 target: shell.applicationManager
                 onMainStageFocusedApplicationChanged: {
-                    if (shell.applicationManager.mainStageFocusedApplication) {
-                        mainStage.show();
-                        stages.show();
-                    }
+                    handleFocusedApplicationChange(mainStage, shell.applicationManager.mainStageFocusedApplication);
                 }
                 onSideStageFocusedApplicationChanged: {
-                    if (shell.applicationManager.sideStageFocusedApplication) {
-                        sideStage.show();
-                        stages.show();
-                    }
+                    handleFocusedApplicationChange(sideStage, shell.applicationManager.sideStageFocusedApplication);
                 }
                 ignoreUnknownSignals: true
+
+                function handleFocusedApplicationChange(stage, application) {
+                    if (stages.shown) {
+                        if (application) {
+                            stage.show();
+                            stages.show();
+                        }
+                    } else {
+                        // focus changed while shell in foreground, ensure app remains unfocused
+                        if (application) {
+                            shell.applicationManager.unfocusCurrentApplication();
+                        }
+                    }
+                }
             }
 
 
@@ -380,11 +397,39 @@ FocusScope {
         width: parent.width
         height: parent.height - panel.panelHeight
 
-        onShownChanged: if (shown) greeter.forceActiveFocus()
+        property var previousMainApp: null
+        property var previousSideApp: null
+
+        onShownChanged: {
+            if (shown) {
+                greeter.forceActiveFocus();
+                // FIXME: *FocusedApplication are not updated when unfocused, hence the need to check whether
+                // the stage was actually shown
+                if (mainStage.fullyShown) greeter.previousMainApp = applicationManager.mainStageFocusedApplication;
+                if (sideStage.fullyShown) greeter.previousSideApp = applicationManager.sideStageFocusedApplication;
+                applicationManager.unfocusCurrentApplication();
+            } else {
+                if (greeter.previousMainApp) {
+                    applicationManager.focusApplication(greeter.previousMainApp);
+                    greeter.previousMainApp = null;
+                }
+                if (greeter.previousSideApp) {
+                    applicationManager.focusApplication(greeter.previousSideApp);
+                    greeter.previousSideApp = null;
+                }
+            }
+        }
 
         onUnlocked: greeter.hide()
-        onSelected: shell.background = greeter.model.get(uid).background;
+        onSelected: {
+            var bgPath = greeter.model.data(uid, LightDM.UserRoles.BackgroundPathRole)
+            shell.background = bgPath ? bgPath : default_background
+        }
 
+        InputFilterArea {
+            anchors.fill: parent
+            blockInput: greeter.shown
+        }
     }
 
     Revealer {
@@ -411,10 +456,9 @@ FocusScope {
             indicatorsMenuWidth: parent.width > units.gu(60) ? units.gu(40) : parent.width
             indicators {
                 hides: [launcher]
-                available: !greeter.shown
             }
             fullscreenMode: shell.fullscreenMode
-            searchEnabled: !greeter.shown
+            searchVisible: !greeter.shown
 
             InputFilterArea {
                 anchors.fill: parent
@@ -478,6 +522,7 @@ FocusScope {
             shortcutsThreshold: shell.edgeSize
             iconPath: "graphics/applicationIcons"
             available: !greeter.locked
+            teasing: available && greeter.leftTeaserPressed
             onDashItemSelected: {
                 greeter.hide()
                 // Animate if moving between application and dash
@@ -542,6 +587,12 @@ FocusScope {
         blockInput: true
     }
 
+    Binding {
+        target: i18n
+        property: "domain"
+        value: "unity8"
+    }
+
     //FIXME: This should be handled in the input stack, keyboard shouldnt propagate
     MouseArea {
         anchors.bottom: parent.bottom
@@ -552,4 +603,3 @@ FocusScope {
         enabled: shell.applicationManager && shell.applicationManager.keyboardVisible
     }
 }
-
