@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd build
+git am --signoff < ubuntu-touch-javafix.patch
+cd ..
