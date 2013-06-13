@@ -19,9 +19,6 @@ $(call inherit-product, device/samsung/galaxys2-common/common.mk)
 
 LOCAL_PATH := device/samsung/i9100
 
-# Overlay
-DEVICE_PACKAGE_OVERLAYS += $(LOCAL_PATH)/overlay
-
 # This device is hdpi.
 PRODUCT_AAPT_CONFIG := normal hdpi
 PRODUCT_AAPT_PREF_CONFIG := hdpi
@@ -29,10 +26,6 @@ PRODUCT_LOCALES += hdpi
 
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.sf.lcd_density=240
-
-# Packages
-# PRODUCT_PACKAGES += \
-#     DeviceSettings
 
 # Sensors
 PRODUCT_PACKAGES += \
