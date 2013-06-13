@@ -2,9 +2,9 @@
 
 echo "Copy Ubuntu session to set GRID_UNIT_PX"
 cp /system/GT-I9100.conf /data/ubuntu/etc/ubuntu-session.d/GT-I9100.conf
-cp /system/Shell.qml /data/ubuntu/usr/share/qml-phone-shell/Shell.qml
+cp /system/Shell.qml /data/ubuntu/usr/share/unity8/Shell.qml
 chmod 755 /data/ubuntu/etc/ubuntu-session.d/GT-I9100.conf
-chmod 755 /data/ubuntu/usr/share/qml-phone-shell/Shell.qml
+chmod 755 /data/ubuntu/usr/share/unity8/Shell.qml
 
 echo "Remove ubuntu-session files from system"
 mount -o rw,remount /system

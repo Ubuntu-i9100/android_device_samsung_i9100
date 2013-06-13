@@ -121,7 +121,7 @@ FocusScope {
             greeter.show()
         }
 
-	// i777 Menu Key (both i9100 and i777)
+        // Menu key
         if (event.key == Qt.Key_Menu) {
             if (hud.shown == true) {
                 hud.hide()
@@ -131,26 +131,14 @@ FocusScope {
             }
         }
 
-        // i777 Home Key
+        // Back key
         if (event.key == Qt.Key_Back) {
-            // Here's where I left off. I'm trying to mimic the close button in ToolBar.qml
-            // actionTriggered(HudClient.QuitToolBarAction)
-
-            // For now we'll let the home button lock the screen.
             greeter.show()
         }
 
-        // I'm using these to probe for the other two keys on the i777. So far no luck :(
-        if (event.key == Qt.Key_Search) {
-            greeter.show()
-        }
-
+        // Home key
         if (event.key == Qt.Key_Home) {
             hud.show()
-        }
-
-        if (event.key == Qt.Key_Period) {
-            greeter.show()
         }
     }
 
@@ -425,11 +413,11 @@ FocusScope {
             var bgPath = greeter.model.data(uid, LightDM.UserRoles.BackgroundPathRole)
             shell.background = bgPath ? bgPath : default_background
         }
+    }
 
-        InputFilterArea {
-            anchors.fill: parent
-            blockInput: greeter.shown
-        }
+    InputFilterArea {
+        anchors.fill: parent
+        blockInput: greeter.shown
     }
 
     Revealer {
@@ -511,16 +499,23 @@ FocusScope {
             enabled: !panel.indicators.shown
         }
 
+        InputFilterArea {
+            blockInput: launcher.shown
+            anchors {
+                top: parent.top
+                bottom: parent.bottom
+                left: parent.left
+            }
+            width: launcher.width
+        }
+
         Launcher {
             id: launcher
 
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             width: parent.width
-            applicationFocused: stages.shown
-            shortcutsWidth: units.gu(9)
-            shortcutsThreshold: shell.edgeSize
-            iconPath: "graphics/applicationIcons"
+            dragAreaWidth: shell.edgeSize
             available: !greeter.locked
             teasing: available && greeter.leftTeaserPressed
             onDashItemSelected: {
@@ -534,17 +529,12 @@ FocusScope {
                 stages.hide();
             }
             onDash: {
-                greeter.hide()
+                dash.setCurrentLens("applications.lens", true, false)
                 stages.hide();
             }
             onLauncherApplicationSelected:{
                 greeter.hide()
-                shell.activateApplication(name)
-            }
-            onStateChanged: {
-                if (state == "spreadMoving") {
-                    dash.setCurrentLens("applications.lens", false, true)
-                }
+                shell.activateApplication(desktopFile)
             }
             onShownChanged: {
                 if (shown) {
@@ -552,16 +542,6 @@ FocusScope {
                     hud.hide()
                 }
             }
-        }
-
-        InputFilterArea {
-            blockInput: launcher.shown
-            anchors {
-                top: parent.top
-                bottom: parent.bottom
-                left: parent.left
-            }
-            width: launcher.shortcutsWidth
         }
     }
 
